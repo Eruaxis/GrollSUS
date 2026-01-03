@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Groll Platform</title>
+    <script src="https://unpkg.com/playroomkit/multiplayer.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: #F2F4F5;
+            --sidebar-bg: #FFFFFF;
+            --text-color: #191B1D;
+            --border-color: #DEE1E3;
+            --card-bg: #FFFFFF;
+            --accent: #00A2FF;
+            --success: #00B06F;
+            --danger: #F74B4E;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #1B1D1F;
+            --sidebar-bg: #2B2D2F;
+            --text-color: #FFFFFF;
+            --border-color: #393B3D;
+            --card-bg: #393B3D;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; transition: background 0.2s; }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            overflow-x: hidden;
+        }
+
+        /* ЭКРАН ВХОДА */
+        #auth-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #111; display: flex; justify-content: center; align-items: center; z-index: 2000;
+        }
+
+        .auth-card {
+            background: white; padding: 40px; border-radius: 15px; width: 90%; max-width: 400px;
+            color: #333; text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+        }
+
+        .auth-card h2 { font-size: 36px; font-weight: 900; margin-bottom: 20px; color: #111; letter-spacing: -2px; }
+        .input-group { margin-bottom: 12px; text-align: left; }
+        
+        input, select {
+            width: 100%; padding: 14px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; outline: none;
+        }
+
+        .status-text { font-size: 11px; font-weight: bold; margin-top: 4px; display: block; min-height: 15px; }
+
+        .btn-reg {
+            width: 100%; padding: 15px; background: var(--success); color: white; border: none;
+            border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 10px;
+        }
+        
+        .btn-reg:disabled { background: #ccc !important; cursor: not-allowed; opacity: 0.6; }
+
+        /* ИНТЕРФЕЙС САЙТА */
+        #main-wrapper { display: none; }
+        
+        .navbar {
+            height: 60px; background-color: var(--sidebar-bg); display: flex; align-items: center; 
+            justify-content: space-between; padding: 0 25px; position: fixed; width: 100%;
+            border-bottom: 1px solid var(--border-color); z-index: 1000;
+        }
+
+        .sidebar {
+            width: 200px; background: var(--sidebar-bg); height: 100vh; position: fixed; 
+            top: 60px; border-right: 1px solid var(--border-color); padding: 15px 0;
+        }
+
+        .sidebar-item { padding: 12px 25px; cursor: pointer; display: flex; align-items: center; font-weight: 500; }
+        .sidebar-item i { margin-right: 15px; width: 20px; font-size: 18px; }
+        .sidebar-item.active { background: rgba(0,0,0,0.05); color: var(--accent); border-left: 4px solid var(--accent); padding-left: 21px; }
+
+        .main-content { margin-left: 200px; padding: 90px 40px 40px; }
+        
+        .page { display: none; animation: fadeIn 0.3s; }
+        .page.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; margin-top: 20px; }
+        
+        .card { 
+            background: var(--card-bg); border-radius: 12px; padding: 15px; 
+            border: 1px solid var(--border-color); transition: 0.2s; cursor: pointer;
+        }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        
+        .card-img { 
+            width: 100%; aspect-ratio: 16/9; 
+            background: linear-gradient(45deg, #00A2FF, #00B06F); 
+            border-radius: 10px; margin-bottom: 10px;
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 40px;
+        }
+
+        /* ПАНЕЛЬ ПЛЕЕРОВ В МУЛЬТИПЛЕЕРЕ */
+        #mp-lobby {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+            z-index: 3000; color: white; flex-direction: column; align-items: center; justify-content: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="auth-screen">
+        <div class="auth-card">
+            <h2 id="auth-title">GROLL</h2>
+            <div class="input-group">
+                <input type="text" id="username" placeholder="Username (English + _)" oninput="validate()">
+                <span id="u-status" class="status-text"></span>
+            </div>
+            <div class="input-group">
+                <input type="password" id="pass1" placeholder="Password (мин. 8)" oninput="validate()">
+                <span id="p-status" class="status-text"></span>
+            </div>
+            <div class="input-group reg-only">
+                <input type="password" id="pass2" placeholder="Repeat Password" oninput="validate()">
+                <span id="m-status" class="status-text"></span>
+            </div>
+            <div class="input-group reg-only">
+                <select id="theme-select">
+                    <option value="light">Светлая тема</option>
+                    <option value="dark">Темная тема</option>
+                </select>
+            </div>
+            <button class="btn-reg" id="reg-btn" onclick="register()" disabled>Создать аккаунт</button>
+            <button onclick="toggleMode()" id="switch-btn" style="background:none; border:none; color:#00A2FF; cursor:pointer; margin-top:15px;">Уже есть аккаунт? Войти</button>
+        </div>
+    </div>
+
+    <div id="main-wrapper">
+        <nav class="navbar">
+            <b style="font-size:24px; cursor:pointer; letter-spacing: -1px;" onclick="showPage('home')">GROLL</b>
+            <div style="display:flex; align-items:center; gap:20px;">
+                <div title="Баланс"><i class="fas fa-coins" style="color:gold;"></i> <b>100</b></div>
+                <span id="user-display" style="font-weight:bold;">User</span>
+                <i class="fas fa-sign-out-alt" onclick="logout()" style="cursor:pointer; color:var(--danger);"></i>
+            </div>
+        </nav>
+
+        <aside class="sidebar">
+            <div class="sidebar-item active" id="m-home" onclick="showPage('home')"><i class="fas fa-home"></i> Home</div>
+            <div class="sidebar-item" id="m-prof" onclick="showPage('prof')"><i class="fas fa-user"></i> Profile</div>
+            <div class="sidebar-item" id="m-shop" onclick="showPage('shop')"><i class="fas fa-shopping-cart"></i> Avatar Shop</div>
+        </aside>
+
+        <main class="main-content">
+            <div id="p-home" class="page active">
+                <h1>Experiences</h1>
+                <div class="grid">
+                    <div class="card" onclick="joinMultiplayer()">
+                        <div class="card-img"><i class="fas fa-rocket"></i></div>
+                        <b>Welcome To GROLL!</b>
+                        <p style="font-size: 12px; color: gray; margin-top: 5px;">By Groll Admins</p>
+                        <div style="margin-top: 10px; font-size: 12px; color: var(--success); font-weight: bold;">
+                            <i class="fas fa-globe"></i> ONLINE MODE | <i class="fas fa-thumbs-up"></i> 100%
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="p-prof" class="page">
+                <h1>Профиль</h1>
+                <div style="display: flex; align-items: center; gap: 20px; margin-top: 20px;">
+                    <div style="width: 80px; height: 80px; background: #ddd; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px;">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <h2 id="p-nick">Username</h2>
+                </div>
+                <div style="margin-top:20px; padding:20px; background:rgba(0,0,0,0.05); border-radius:10px; border: 1px solid var(--border-color);">
+                    <p>"Пока сервера Roblox чинят, я строю свою империю в Groll."</p>
+                </div>
+            </div>
+
+            <div id="p-shop" class="page">
+                <h1>Avatar Shop</h1>
+                <p>Баланс: 100 G-Coins</p>
+                <div class="grid">
+                    <div class="card" style="text-align: center;">
+                        <i class="fas fa-hat-wizard" style="font-size: 40px; margin-bottom: 10px;"></i><br>
+                        <b>Groll Hat</b><br>
+                        <button class="btn-reg" style="padding:5px; font-size: 12px;">50 G</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="mp-lobby">
+        <h2 id="server-status">Подключение к Playroom...</h2>
+        <div id="players-list" style="margin: 20px 0; display: flex; gap: 10px;"></div>
+        <button class="btn-reg" style="width: 200px; background: var(--danger);" onclick="location.reload()">Выйти</button>
+    </div>
+
+    <script>
+        let isLogin = false;
+
+        // ВАЛИДАЦИЯ ФОРМЫ
+        function validate() {
+            const u = document.getElementById('username').value;
+            const p1 = document.getElementById('pass1').value;
+            const p2 = document.getElementById('pass2').value;
+            const btn = document.getElementById('reg-btn');
+            
+            const uStatus = document.getElementById('u-status');
+            const pStatus = document.getElementById('p-status');
+            const mStatus = document.getElementById('m-status');
+
+            const uRegex = /^[a-zA-Z0-9_]+$/;
+            
+            let uOk = u.length >= 3 && uRegex.test(u);
+            let pOk = p1.length >= 8;
+            let mOk = isLogin || (p1 === p2 && p2 !== "");
+
+            if (u === "") uStatus.innerText = "";
+            else if (!uOk) { uStatus.innerText = "3+ символа, Eng и _"; uStatus.style.color = "red"; }
+            else { uStatus.innerText = "Свободно!"; uStatus.style.color = "green"; }
+            
+            pStatus.innerText = (p1.length > 0 && !pOk) ? "Мин. 8 символов" : (pOk ? "OK" : "");
+            pStatus.style.color = pOk ? "green" : "red";
+
+            if(!isLogin) {
+                mStatus.innerText = p2 !== "" && p1 !== p2 ? "Не совпадают" : (mOk && p2 !== "" ? "OK" : "");
+                mStatus.style.color = mOk ? "green" : "red";
+            }
+
+            btn.disabled = !(uOk && pOk && mOk);
+        }
+
+        // ПЕРЕКЛЮЧЕНИЕ МЕЖДУ ВХОДОМ И РЕГИСТРАЦИЕЙ
+        function toggleMode() {
+            isLogin = !isLogin;
+            document.querySelectorAll('.reg-only').forEach(e => e.style.display = isLogin ? 'none' : 'block');
+            document.getElementById('auth-title').innerText = isLogin ? 'Login' : 'GROLL';
+            document.getElementById('reg-btn').innerText = isLogin ? 'Войти' : 'Создать аккаунт';
+            document.getElementById('switch-btn').innerText = isLogin ? 'Нет аккаунта? Регистрация' : 'Уже есть аккаунт? Войти';
+            validate();
+        }
+
+        // РЕГИСТРАЦИЯ
+        function register() {
+            const u = document.getElementById('username').value;
+            const t = document.getElementById('theme-select').value;
+            const userData = { name: u, theme: t };
+            localStorage.setItem('groll_user', JSON.stringify(userData));
+            login(userData);
+        }
+
+        // ВХОД В АККАУНТ
+        function login(data) {
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('main-wrapper').style.display = 'block';
+            document.getElementById('user-display').innerText = data.name;
+            document.getElementById('p-nick').innerText = data.name;
+            document.body.setAttribute('data-theme', data.theme);
+        }
+
+        // НАВИГАЦИЯ ПО СТРАНИЦАМ
+        function showPage(id) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+            document.getElementById('p-' + id).classList.add('active');
+            document.getElementById('m-' + id).classList.add('active');
+        }
+
+        // ВЫХОД
+        function logout() {
+            localStorage.removeItem('groll_user');
+            location.reload();
+        }
+
+        // ФУНКЦИЯ ДЖОИНГА В МУЛЬТИПЛЕЕР (PLAYROOM)
+        async function joinMultiplayer() {
+            document.getElementById('mp-lobby').style.display = 'flex';
+            try {
+                // Инициализация Playroom сессии
+                await Playroom.insertCoin();
+                document.getElementById('server-status').innerText = "Вы на сервере GROLL!";
+                
+                const myData = JSON.parse(localStorage.getItem('groll_user'));
+                
+                // Событие при входе игрока
+                Playroom.onPlayerJoin((player) => {
+                    if (player === Playroom.myPlayer()) {
+                        player.setState("name", myData.name);
+                    }
+                    console.log(player.getState("name") + " joined");
+                });
+
+            } catch(e) {
+                alert("Ошибка подключения к серверу");
+                location.reload();
+            }
+        }
+
+        // ПРОВЕРКА СЕССИИ ПРИ ЗАГРУЗКЕ
+        window.onload = () => {
+            const saved = localStorage.getItem('groll_user');
+            if(saved) login(JSON.parse(saved));
+        }
+    </script>
+</body>
+</html>
